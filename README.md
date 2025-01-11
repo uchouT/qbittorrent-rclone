@@ -16,13 +16,13 @@
 ## 修改的内容
 
 rclone的保存路径与种子在服务器上的下载路径一致，且单文件种子上传时会在目标路径创建文件夹，方便结合qbittorrent rss下载番剧
-
+对 AutoBangumi 进行了优化
 ## 使用方法
 
 1. Qb WEB UI勾选`torrent完成时运行外部程序`，填上：
 
 ```
-bash /root/qb_auto.sh  "%N" "%F" "%R" "%D" "%C" "%Z" "%I"
+bash /root/qb_auto.sh  "%N" "%F" "%R" "%D" "%C" "%Z" "%I %L"
 ```
 ![](https://raw.githubusercontent.com/uchouT/qbittorrent-rclone/main/pic/Mvmv5j.jpg)
 
