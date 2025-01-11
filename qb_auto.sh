@@ -5,17 +5,18 @@ root_dir=$3
 save_dir=$4
 files_num=$5
 torrent_size=$6
-file_hash=$7
+torrent_hash=$7
+torrent_type=$8
 
-qb_version=""
-qb_username=""
-qb_password=""
+qb_version="4.5.4"
+qb_username="admin"
+qb_password="yourpassword"
 qb_web_url="http://localhost:8080"
 leeching_mode="false"
 log_dir="/root/qblog"
-rclone_dest=""
+rclone_dest="od"
 rclone_parallel="5"
-auto_del_flag="uploaded"
+auto_del_flag="rcloned"
 
 if [ ! -d ${log_dir} ]
 then
@@ -57,18 +58,16 @@ function qb_login(){
 	fi
 }
 
-
-
 function qb_del(){
 	if [ ${leeching_mode} == "true" ]
 	then
 		if [ ${qb_v} == "1" ]
 		then
-			curl "${qb_web_url}/api/v2/torrents/delete?hashes=${file_hash}&deleteFiles=true" --cookie ${cookie}
+			curl "${qb_web_url}/api/v2/torrents/delete?hashes=${torrent_hash}&deleteFiles=true" --cookie ${cookie}
 			echo "[$(date '+%Y-%m-%d %H:%M:%S')] 删除成功！种子名称:${torrent_name}" >> ${log_dir}/qb.log
 		elif [ ${qb_v} == "2" ]
 		then
-			curl -X POST -d "hashes=${file_hash}" "${qb_web_url}/command/deletePerm" --cookie ${cookie}
+			curl -X POST -d "hashes=${torrent_hash}" "${qb_web_url}/command/deletePerm" --cookie ${cookie}
 		else
 			echo "[$(date '+%Y-%m-%d %H:%M:%S')] 删除成功！种子文件:${torrent_name}" >> ${log_dir}/qb.log
 			echo "qb_v=${qb_v}" >> ${log_dir}/qb.log
@@ -81,25 +80,33 @@ function qb_del(){
 function rclone_copy(){
 	if [ ${type} == "file" ]
 	then
-		rclone_copy_cmd=$(rclone -v copy --transfers ${rclone_parallel} --log-file  ${log_dir}/qbauto_copy.log "${content_dir}" ${rclone_dest}:"${save_dir}")
+		if [ ${torrent_type} == "Bangumi" ]
+		then
+			sleep 15
+			content_dir=$(find "${save_dir}" -type f -size ${torrent_size}c)
+		fi
+		rclone_copy_cmd=$(rclone -v copy --transfers ${rclone_parallel} --log-file  ${log_dir}/qbauto_copy.log "${content_dir}" ${rclone_dest}:"${save_dir:5}")
 	elif [ ${type} == "dir" ]
 	then
-		rclone_copy_cmd=$(rclone -v copy --transfers ${rclone_parallel} --log-file ${log_dir}/qbauto_copy.log "${content_dir}"/ ${rclone_dest}:"${content_dir}"/)
+		rclone_copy_cmd=$(rclone -v copy --transfers ${rclone_parallel} --log-file ${log_dir}/qbauto_copy.log "${content_dir}"/ ${rclone_dest}:"${content_dir:5}"/)
 	fi
 }
 
 function qb_add_auto_del_tags(){
 	if [ ${qb_v} == "1" ]
 	then
-		curl -X POST -d "hashes=${file_hash}&tags=${auto_del_flag}" "${qb_web_url}/api/v2/torrents/addTags" --cookie "${cookie}"
+		curl -X POST -d "hashes=${torrent_hash}&tags=${auto_del_flag}" "${qb_web_url}/api/v2/torrents/addTags" --cookie "${cookie}"
 	elif [ ${qb_v} == "2" ]
 	then
-		curl -X POST -d "hashes=${file_hash}&category=${auto_del_flag}" "${qb_web_url}/command/setCategory" --cookie ${cookie}
+		curl -X POST -d "hashes=${torrent_hash}&category=${auto_del_flag}" "${qb_web_url}/command/setCategory" --cookie ${cookie}
 	else
 		echo "qb_v=${qb_v}" >> ${log_dir}/qb.log
 	fi
 }
-
+if [ ${torrent_type} == "Bangumi" ]
+then
+	echo "AutoBangumi" >> ${log_dir}/qb.log
+fi
 if [ -f "${content_dir}" ]
 then
    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 类型：文件" >> ${log_dir}/qb.log
@@ -126,7 +133,6 @@ echo "根目录：${root_dir}" >> ${log_dir}/qb.log
 echo "保存路径：${save_dir}" >> ${log_dir}/qb.log
 echo "文件数：${files_num}" >> ${log_dir}/qb.log
 echo "文件大小：${torrent_size}Bytes" >> ${log_dir}/qb.log
-echo "HASH:${file_hash}" >> ${log_dir}/qb.log
+echo "HASH:${torrent_hash}" >> ${log_dir}/qb.log
 echo "Cookie:${cookie}" >> ${log_dir}/qb.log
 echo -e "-------------------------------------------------------------\n" >> ${log_dir}/qb.log
-
